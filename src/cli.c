@@ -51,7 +51,7 @@ static const char * const mixerNames[] = {
 static const char * const featureNames[] = {
     "PPM", "VBAT", "INFLIGHT_ACC_CAL", "SERIALRX", "MOTOR_STOP",
     "SERVO_TILT", "GYRO_SMOOTHING", "LED_RING", "GPS",
-    "FAILSAFE", "SONAR", "TELEMETRY", "POWERMETER", "VARIO", "3D", "SOFTSERIAL",
+    "FAILSAFE", "SONAR", "TELEMETRY", "POWERMETER", "VARIO", "3D", "SOFTSERIAL", "LIGHTTELEMETRY",
     NULL
 };
 
@@ -131,6 +131,7 @@ const clivalue_t valueTable[] = {
     { "gps_baudrate", VAR_INT8, &mcfg.gps_baudrate, -1, 4 },
     { "serialrx_type", VAR_UINT8, &mcfg.serialrx_type, 0, 2 },
     { "telemetry_softserial", VAR_UINT8, &mcfg.telemetry_softserial, 0, 1 },
+	{ "lighttelemetry", VAR_UINT8, &mcfg.lighttelemetry, 0, 1 },
     { "vbatscale", VAR_UINT8, &mcfg.vbatscale, 10, 200 },
     { "vbatmaxcellvoltage", VAR_UINT8, &mcfg.vbatmaxcellvoltage, 10, 50 },
     { "vbatmincellvoltage", VAR_UINT8, &mcfg.vbatmincellvoltage, 10, 50 },

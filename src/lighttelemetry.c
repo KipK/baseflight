@@ -44,9 +44,8 @@ void sendLightTelemetryGPS(void)
 
 	for (i = 0; i<19; i++) {
 		serialWrite(core.telemport,LTBuff[i]);
-		serialWrite(core.telemport,0X80); // write stop bit
+		serialWrite(core.telemport,0X80); // write 1 stop bits
 	}
-
 }
 
 void initLightTelemetry(void)

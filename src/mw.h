@@ -472,4 +472,5 @@ int32_t wrap_18000(int32_t error);
 void initTelemetry(void);
 void updateTelemetryState(void);
 void sendTelemetry(void);
+void initLightTelemetry(void);
 void sendLightTelemetry(void);

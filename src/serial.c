@@ -692,4 +692,7 @@ void serialCom(void)
     if (!cliMode && feature(FEATURE_TELEMETRY)) { // The first condition should never evaluate to true but I'm putting it here anyway - silpstream
         sendTelemetry();
     }
+	if (!cliMode && feature(FEATURE_LIGHTTELEMETRY)) { // The first condition should never evaluate to true but I'm putting it here anyway - silpstream
+        sendLightTelemetry();
+    }
 }

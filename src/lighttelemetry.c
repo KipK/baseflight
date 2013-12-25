@@ -26,12 +26,12 @@ void sendLightTelemetryGPS(void)
 	LTBuff[8]=(GPS_coord[LON] >> 8*1) & 0xFF;
 	LTBuff[9]=(GPS_coord[LON] >> 8*2) & 0xFF;
 	LTBuff[10]=(GPS_coord[LON] >> 8*3) & 0xFF;
-	LTBuff[11]=(GPS_speed >> 8*0) & 0xFF;
-	LTBuff[12]=(GPS_speed >> 8*1) & 0xFF;
-	LTBuff[13]=(EstAlt >> 8*0) & 0xFF;
-	LTBuff[14]=(EstAlt >> 8*1) & 0xFF;
-	LTBuff[15]=(EstAlt >> 8*2) & 0xFF;
-	LTBuff[16]=(EstAlt >> 8*3) & 0xFF;
+	LTBuff[11]=((int16_t)round(GPS_speed/100) >> 8*0) & 0xFF;
+	LTBuff[12]=((int16_t)round(GPS_speed/100) >> 8*1) & 0xFF;
+	LTBuff[13]=(BaroAlt >> 8*0) & 0xFF;
+	LTBuff[14]=(BaroAlt >> 8*1) & 0xFF;
+	LTBuff[15]=(BaroAlt >> 8*2) & 0xFF;
+	LTBuff[16]=(BaroAlt >> 8*3) & 0xFF;
 	LTBuff[17]= ((GPS_numSat << 2)& 0xFF ) | (f.GPS_FIX & 0b00000011) ; // last 6 bits: sats number, first 2:fix type (0,1,2,3)
 
 	//CRC
@@ -44,6 +44,7 @@ void sendLightTelemetryGPS(void)
 
 	for (i = 0; i<19; i++) {
 		serialWrite(core.telemport,LTBuff[i]);
+		serialWrite(core.telemport,0X80); // write stop bit
 	}
 
 }

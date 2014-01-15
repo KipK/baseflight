@@ -151,8 +151,8 @@ int main(void)
     if (feature(FEATURE_TELEMETRY))
         initTelemetry();
 
-	if (feature(FEATURE_LIGHTTELEMETRY))
-		initLightTelemetry();
+    if (feature(FEATURE_LIGHTTELEMETRY))
+        initLightTelemetry();
 		
     previousTime = micros();
     if (mcfg.mixerConfiguration == MULTITYPE_GIMBAL)

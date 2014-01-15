@@ -125,7 +125,7 @@ const clivalue_t valueTable[] = {
     { "retarded_arm", VAR_UINT8, &mcfg.retarded_arm, 0, 1 },
     { "flaps_speed", VAR_UINT8, &mcfg.flaps_speed, 0, 100 },
     { "serial_baudrate", VAR_UINT32, &mcfg.serial_baudrate, 1200, 115200 },
-    { "softserial_baudrate", VAR_UINT32, &mcfg.softserial_baudrate, 1200, 19200 },
+    { "softserial_baudrate", VAR_UINT32, &mcfg.softserial_baudrate, 9600, 19200 },
     { "softserial_inverted", VAR_UINT8, &mcfg.softserial_inverted, 0, 1 },
     { "gps_type", VAR_UINT8, &mcfg.gps_type, 0, 3 },
     { "gps_baudrate", VAR_INT8, &mcfg.gps_baudrate, -1, 4 },

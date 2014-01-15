@@ -216,8 +216,8 @@ static void resetConf(void)
     mcfg.serial_baudrate = 115200;
     mcfg.softserial_baudrate = 19200;
     mcfg.softserial_inverted = 0;
-	// lighttelemetry (USART1) baudrate
-	mcfg.lighttelemetry_baudrate = 1200;
+    // lighttelemetry (USART1) baudrate
+    mcfg.lighttelemetry_baudrate = 1200;
     mcfg.looptime = 3500;
     mcfg.rssi_aux_channel = 0;
 

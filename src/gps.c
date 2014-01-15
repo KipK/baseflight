@@ -120,7 +120,7 @@ void gpsInitHardware(void)
             break;
 
         case GPS_UBLOX:
-            // UBX will run at mcfg.baudrate, it shouldn't be "autodetected". So here we force it to that rate
+            // UBX will run at mcfg.gps_baudrate, it shouldn't be "autodetected". So here we force it to that rate
 
             // Wait until GPS transmit buffer is empty
             if (!isSerialTransmitBufferEmpty(core.gpsport))
@@ -135,18 +135,16 @@ void gpsInitHardware(void)
                     // try different speed to INIT
                     serialSetBaudRate(core.gpsport, gpsInitData[gpsData.state_position].baudrate);
                     // but print our FIXED init string for the baudrate we want to be at
-                    serialPrint(core.gpsport, gpsInitData[mcfg.gps_baudrate].ubx);
+                    serialPrint(core.gpsport, gpsInitData[gpsData.baudrateIndex].ubx);
 
                     gpsData.state_position++;
                     gpsData.state_ts = m;
                 } else {
                     // we're now (hopefully) at the correct rate, next state will switch to it
-                    gpsData.baudrateIndex = mcfg.gps_baudrate;
                     gpsSetState(GPS_INITDONE);
                 }
             } else {
                 // GPS_INITDONE, set our real baud rate and push some ublox config strings
-
                 if (gpsData.state_position == 0)
                     serialSetBaudRate(core.gpsport, gpsInitData[gpsData.baudrateIndex].baudrate);
 

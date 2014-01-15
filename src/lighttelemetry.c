@@ -1,5 +1,9 @@
 /*
- * LightTelemetry implementation by KipK ( used by Ghettostation: https://github.com/KipK/Ghettostation )
+ * LightTelemetry implementation by KipK 
+ *
+ * This is a lightw & simple one way telemetry protocol that fits in really low baudrates >= 1200 bauds
+ * It's targeted for the moment for Ghettostation antenna tracker: https://github.com/KipK/Ghettostation )
+ * Will be extended in the future for ground OSD usage.
  */
 #include "board.h"
 #include "mw.h"
@@ -46,15 +50,30 @@ void sendLightTelemetryGPS(void)
     }
 }
 
+static bool lighttelemetryEnabled = false;
+
 void initLightTelemetry(void)
 {
-//core.telemport = &(softSerialPorts[0].port);
+
 core.telemport = core.mainport;
 
 }
 
 static uint32_t lastCycleTime = 0;
 static uint8_t cycleNum = 0;
+
+void updateLightTelemetryState(void)
+{
+    bool State = f.ARMED || rcOptions[BOXTELEMETRY]; 
+
+    if (State != lighttelemetryEnabled) {
+        if (State)
+            serialInit(mcfg.lighttelemetry_baudrate);
+        else
+            serialInit(mcfg.serial_baudrate);
+        lighttelemetryEnabled = State;
+    }
+}
 
 void sendLightTelemetry(void)
 {
@@ -64,7 +83,7 @@ void sendLightTelemetry(void)
         lastCycleTime = millis();
         cycleNum++;
         // Sent every 200ms
-        sendLightTelemetryGPS();
+        sendLightTelemetryGPS(); // Only one frame at 5hz for now. Will be extended with other frames for ground osd.
     }
 }
 

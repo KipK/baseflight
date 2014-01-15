@@ -128,6 +128,7 @@ const clivalue_t valueTable[] = {
     { "serial_baudrate", VAR_UINT32, &mcfg.serial_baudrate, 1200, 115200 },
     { "softserial_baudrate", VAR_UINT32, &mcfg.softserial_baudrate, 9600, 19200 },
     { "softserial_inverted", VAR_UINT8, &mcfg.softserial_inverted, 0, 1 },
+    { "lighttelemetry_baudrate", VAR_UINT32, &mcfg.lighttelemetry_baudrate, 1200, 115200 },
     { "gps_type", VAR_UINT8, &mcfg.gps_type, 0, 3 },
     { "gps_baudrate", VAR_INT8, &mcfg.gps_baudrate, -1, 4 },
     { "serialrx_type", VAR_UINT8, &mcfg.serialrx_type, 0, 2 },

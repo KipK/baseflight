@@ -277,10 +277,12 @@ typedef struct master_t {
     uint32_t serial_baudrate;
 
     uint32_t softserial_baudrate;
-    uint8_t softserial_inverted;           // use inverted softserial input and output signals
+    uint8_t softserial_inverted;            // use inverted softserial input and output signals
 
-    uint8_t telemetry_softserial;               // Serial to use for Telemetry. 0:USART1, 1:SoftSerial1 (Enable FEATURE_SOFTSERIAL first)
-    uint8_t lighttelemetry;						// Lighttelemetry protocol. 0: Disable , 1: Enable
+    uint8_t telemetry_softserial;           // Serial to use for Telemetry. 0:USART1, 1:SoftSerial1 (Enable FEATURE_SOFTSERIAL first)
+	
+    uint32_t lighttelemetry_baudrate;       
+	
 
     config_t profile[3];                    // 3 separate profiles
     uint8_t current_profile;                // currently loaded profile

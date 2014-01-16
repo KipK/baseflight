@@ -46,7 +46,7 @@ void sendLightTelemetryGPS(void)
     LTBuff[17]=LTCrc;
 
     for (i = 0; i<18; i++) {
-        serialWrite(core.telemport,LTBuff[i]);
+        serialWrite(core.mainport,LTBuff[i]);
     }
 }
 
@@ -55,12 +55,12 @@ static bool lighttelemetryEnabled = false;
 void initLightTelemetry(void)
 {
 
-core.telemport = core.mainport;
+ //nothing usefull yet. Will be added when softserial will work at other baudrates.
 
 }
 
-static uint32_t lastCycleTime = 0;
-static uint8_t cycleNum = 0;
+static uint32_t ltm_lastCycleTime = 0;
+static uint8_t ltm_cycleNum = 0;
 
 void updateLightTelemetryState(void)
 {
@@ -77,11 +77,13 @@ void updateLightTelemetryState(void)
 
 void sendLightTelemetry(void)
 {
-    if (serialTotalBytesWaiting(core.telemport) != 0)
+    if (!f.ARMED && !rcOptions[BOXTELEMETRY])
         return;
-    if (millis() - lastCycleTime >= CYCLETIME) {
-        lastCycleTime = millis();
-        cycleNum++;
+    if (serialTotalBytesWaiting(core.mainport) != 0)
+        return;
+    if (millis() - ltm_lastCycleTime >= CYCLETIME) {
+        ltm_lastCycleTime = millis();
+        ltm_cycleNum++;
         // Sent every 200ms
         sendLightTelemetryGPS(); // Only one frame at 5hz for now. Will be extended with other frames for ground osd.
     }

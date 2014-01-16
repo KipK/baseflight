@@ -64,8 +64,12 @@ static uint8_t ltm_cycleNum = 0;
 
 void updateLightTelemetryState(void)
 {
-    bool State = f.ARMED || rcOptions[BOXTELEMETRY]; 
-
+    bool State;
+	if (!mcfg.telemetry_switch)
+        State = f.ARMED;
+    else
+        State = rcOptions[BOXTELEMETRY];
+	
     if (State != lighttelemetryEnabled) {
         if (State)
             serialInit(mcfg.lighttelemetry_baudrate);
@@ -77,7 +81,7 @@ void updateLightTelemetryState(void)
 
 void sendLightTelemetry(void)
 {
-    if (!f.ARMED && !rcOptions[BOXTELEMETRY])
+    if ((!mcfg.telemetry_switch && !f.ARMED) || (mcfg.telemetry_switch && !rcOptions[BOXTELEMETRY]))
         return;
     if (serialTotalBytesWaiting(core.mainport) != 0)
         return;

@@ -480,3 +480,6 @@ void updateTelemetryState(void);
 void sendTelemetry(void);
 void initLightTelemetry(void);
 void sendLightTelemetry(void);
+
+//lighttelemetry
+void updateLightTelemetryState(void);

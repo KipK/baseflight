@@ -15,7 +15,7 @@ void sendLightTelemetryGPS(void)
 {
 
     uint8_t LTBuff[18];
-    //protocol: START(2 bytes)FRAMEID(1byte)LAT(cm,4 bytes)LON(cm,4bytes)SPEED(m/s,2bytes)ALT(cm,4bytes)SATS(6bits)FIX(2bits)CRC(xor,1byte)
+    //protocol: START(2 bytes)FRAMEID(1byte)LAT(cm,4 bytes)LON(cm,4bytes)SPEED(m/s,1bytes)ALT(cm,4bytes)SATS(6bits)FIX(2bits)CRC(xor,1byte)
     //START
     LTBuff[0]=0x24; //$
     LTBuff[1]=0x54; //T

@@ -120,7 +120,7 @@ const clivalue_t valueTable[] = {
     { "deadband3d_high", VAR_UINT16, &mcfg.deadband3d_high, 0, 2000 },
     { "neutral3d", VAR_UINT16, &mcfg.neutral3d, 0, 2000 },
     { "deadband3d_throttle", VAR_UINT16, &mcfg.deadband3d_throttle, 0, 2000 },
-    { "motor_pwm_rate", VAR_UINT16, &mcfg.motor_pwm_rate, 50, 498 },
+    { "motor_pwm_rate", VAR_UINT16, &mcfg.motor_pwm_rate, 50, 32000 },
     { "servo_pwm_rate", VAR_UINT16, &mcfg.servo_pwm_rate, 50, 498 },
     { "retarded_arm", VAR_UINT8, &mcfg.retarded_arm, 0, 1 },
     { "flaps_speed", VAR_UINT8, &mcfg.flaps_speed, 0, 100 },
@@ -131,7 +131,7 @@ const clivalue_t valueTable[] = {
     { "lighttelemetry_baudrate", VAR_UINT32, &mcfg.lighttelemetry_baudrate, 1200, 115200 },
     { "gps_type", VAR_UINT8, &mcfg.gps_type, 0, 3 },
     { "gps_baudrate", VAR_INT8, &mcfg.gps_baudrate, -1, 4 },
-    { "serialrx_type", VAR_UINT8, &mcfg.serialrx_type, 0, 2 },
+    { "serialrx_type", VAR_UINT8, &mcfg.serialrx_type, 0, 3 },
     { "telemetry_softserial", VAR_UINT8, &mcfg.telemetry_softserial, 0, 1 },
     { "telemetry_switch", VAR_UINT8, &mcfg.telemetry_switch, 0, 1 },
     { "vbatscale", VAR_UINT8, &mcfg.vbatscale, 10, 200 },
@@ -210,6 +210,9 @@ const clivalue_t valueTable[] = {
     { "p_level", VAR_UINT8, &cfg.P8[PIDLEVEL], 0, 200 },
     { "i_level", VAR_UINT8, &cfg.I8[PIDLEVEL], 0, 200 },
     { "d_level", VAR_UINT8, &cfg.D8[PIDLEVEL], 0, 200 },
+    { "p_vel", VAR_UINT8, &cfg.P8[PIDVEL], 0, 200 },
+    { "i_vel", VAR_UINT8, &cfg.I8[PIDVEL], 0, 200 },
+    { "d_vel", VAR_UINT8, &cfg.D8[PIDVEL], 0, 200 },
 };
 
 #define VALUE_COUNT (sizeof(valueTable) / sizeof(clivalue_t))

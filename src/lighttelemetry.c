@@ -26,16 +26,16 @@
 
 static void send_LTM_Packet(uint8_t *LTPacket, uint8_t LTPacket_size)
 {
-	//calculate Checksum
-	uint8_t LTCrc = 0x00;
+    //calculate Checksum
+    uint8_t LTCrc = 0x00;
     int i;
-	for (i = 3; i < LTPacket_size-1; i++) {
+    for (i = 3; i < LTPacket_size-1; i++) {
         LTCrc ^= LTPacket[i];
     }
-	LTPacket[LTPacket_size-1]=LTCrc;
+    LTPacket[LTPacket_size-1]=LTCrc;
     for (i = 0; i<LTPacket_size; i++) {
         serialWrite(core.mainport,LTPacket[i]);
-	}
+    }
 }
 // GPS frame
 void send_LTM_Gframe()
@@ -141,11 +141,11 @@ static uint8_t ltm_cycleNum = 0;
 void updateLightTelemetryState(void)
 {
     bool State;
-	if (!mcfg.telemetry_switch)
+    if (!mcfg.telemetry_switch)
         State = f.ARMED;
     else
         State = rcOptions[BOXTELEMETRY];
-	
+    
     if (State != lighttelemetryEnabled) {
         if (State)
             serialInit(mcfg.lighttelemetry_baudrate);

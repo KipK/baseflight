@@ -77,12 +77,12 @@ static void send_LTM_Sframe()
     // 8: Altitude Hold, 9: Loiter/GPS Hold, 10: Auto/Waypoints, 11: Heading Hold / headFree, 
     // 12: Circle, 13: RTH, 14: FollowMe, 15: LAND, 16:FlybyWireA, 17: FlybywireB, 18: Cruise, 19: Unknown    
     if (f.PASSTHRU_MODE) lt_flightmode = 0;
-    else if (f.ANGLE_MODE)lt_flightmode = 2;
-    else if (f.HORIZON_MODE) lt_flightmode = 3;
-    else if (f.BARO_MODE) lt_flightmode = 8;
-    else if (f.HEADFREE_MODE) lt_flightmode = 4;
     else if (f.GPS_HOME_MODE) lt_flightmode = 13;
     else if (f.GPS_HOLD_MODE) lt_flightmode = 10;
+    else if (f.HEADFREE_MODE) lt_flightmode = 4;
+    else if (f.BARO_MODE) lt_flightmode = 8;
+    else if (f.ANGLE_MODE)lt_flightmode = 2;
+    else if (f.HORIZON_MODE) lt_flightmode = 3;
     else lt_flightmode = 1; // Rate mode
     
     if (failsafeCnt>2) lt_failsafe = 1;

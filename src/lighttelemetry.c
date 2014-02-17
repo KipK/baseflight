@@ -38,7 +38,7 @@ static void send_LTM_Packet(uint8_t *LTPacket, uint8_t LTPacket_size)
 	}
 }
 // GPS frame
-void send_LTM_Gframe(void)
+void send_LTM_Gframe()
 {
 
     uint8_t LTBuff[LTM_GFRAME_SIZE];
@@ -63,7 +63,7 @@ void send_LTM_Gframe(void)
     LTBuff[14]=(BaroAlt >> 8*2) & 0xFF;
     LTBuff[15]=(BaroAlt >> 8*3) & 0xFF;
     LTBuff[16]= ((GPS_numSat << 2)& 0xFF ) | (f.GPS_FIX & 0b00000011) ; // last 6 bits: sats number, first 2:fix type (0,1,2,3)
-    send_LTM_Packet(LTBuff,LTM_SFRAME_SIZE);
+    send_LTM_Packet(LTBuff,LTM_GFRAME_SIZE);
 }
 
 //Sensors frame

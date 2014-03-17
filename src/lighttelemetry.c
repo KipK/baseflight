@@ -5,13 +5,13 @@
  * Effective for ground OSD, groundstation HUD and Antenna tracker (ie https://code.google.com/p/ghettostation/ )
  *			   
  * Protocol details: 3 different frames, little endian.
- *   G Frame (GPS position) (2hz @ 1200 bauds , 5hz >= 2400 bauds): 18BYTES
+ *   G Frame (GPS position) (2hz @ 1200 bauds , 2hz >= 2400 bauds): 18BYTES
  *    0x24 0x54 0x47 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF  0xFF   0xC0   
  *     $     T    G  --------LAT-------- -------LON---------  SPD --------ALT-------- SAT/FIX  CRC
  *   A Frame (Attitude) (5hz @ 1200bauds , 10hz >= 2400bauds): 10BYTES
  *     0x24 0x54 0x41 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xC0   
  *      $     T   A   --PITCH-- --ROLL--- -HEADING-  CRC
- *   S Frame (Sensors) (2hz @ 1200bauds, 5hz >= 2400bauds): 11BYTES
+ *   S Frame (Sensors) (2hz @ 1200bauds, 2hz >= 2400bauds): 11BYTES
  *     0x24 0x54 0x53 0xFF 0xFF  0xFF 0xFF    0xFF    0xFF      0xFF       0xC0     
  *      $     T   S   VBAT(mv)  Current(ma)   RSSI  AIRSPEED  ARM/FS/FMOD   CRC
  */
@@ -36,11 +36,14 @@ static void send_LTM_Packet(uint8_t *LTPacket, uint8_t LTPacket_size)
     for (i = 0; i<LTPacket_size; i++) {
         serialWrite(core.mainport,LTPacket[i]);
     }
+    
 }
 // GPS frame
 void send_LTM_Gframe()
 {
-
+    uint8_t ltm_gpsfix = f.GPS_FIX;
+    if (ltm_gpsfix == 1)
+        ltm_gpsfix = 3; // 3D fix
     uint8_t LTBuff[LTM_GFRAME_SIZE];
     //protocol: START(2 bytes)FRAMEID(1byte)LAT(cm,4 bytes)LON(cm,4bytes)SPEED(m/s,1bytes)ALT(cm,4bytes)SATS(6bits)FIX(2bits)CRC(xor,1byte)
     //START
@@ -97,10 +100,10 @@ static void send_LTM_Sframe()
     //PAYLOAD
     LTBuff[3]=(vbat*100 >> 8*0) & 0xFF;                                                                    //vbat converted in mv
     LTBuff[4]=(vbat*100 >> 8*1) & 0xFF;
-    LTBuff[5]=(0 >> 8*0) & 0xFF;                                                                           //consumed current. Not impemented in baseflight yet.
-    LTBuff[6]=(0 >> 8*1) & 0xFF;
+    LTBuff[5]= 0;                                                                           //consumed current. Not implemented in baseflight yet.
+    LTBuff[6]= 0;
     LTBuff[7]=((uint8_t) (rssi*254)/1023 >> 8*0) & 0xFF;                                                   // rouding RSSI to 1 byte resolution.
-    LTBuff[8]=(0 >> 8*0) & 0xFF;                                                                          // no airspeed in multiwii/baseflight
+    LTBuff[8]= 0;                                                                          // no airspeed in multiwii/baseflight
     LTBuff[9]= ((lt_flightmode << 2)& 0xFF ) | ((lt_failsafe << 1)& 0b00000010 ) | (f.ARMED & 0b00000001) ; // last 6 bits: flight mode, 2nd bit: failsafe, 1st bit: Arm status.
     send_LTM_Packet(LTBuff,LTM_SFRAME_SIZE);
 }
@@ -109,7 +112,6 @@ static void send_LTM_Sframe()
 static void send_LTM_Aframe() 
 {
     uint8_t LTBuff[LTM_AFRAME_SIZE];
-    
     //A Frame: $T(2 bytes)A(1byte)PITCH(2 bytes)ROLL(2bytes)HEADING(2bytes)CRC(xor,1byte)
     //START
     LTBuff[0]=0x24; //$
@@ -121,8 +123,8 @@ static void send_LTM_Aframe()
     LTBuff[4]=((angle[1]/10) >> 8*1) & 0xFF;
     LTBuff[5]=((angle[0]/10) >> 8*0) & 0xFF;
     LTBuff[6]=((angle[0]/10) >> 8*1) & 0xFF;
-    LTBuff[7]=(heading/10 >> 8*0) & 0xFF;
-    LTBuff[8]=(heading/10 >> 8*1) & 0xFF;
+    LTBuff[7]=(heading >> 8*0) & 0xFF;
+    LTBuff[8]=(heading >> 8*1) & 0xFF;
     send_LTM_Packet(LTBuff,LTM_AFRAME_SIZE);
 }
 
@@ -167,21 +169,18 @@ void sendLightTelemetry(void)
         ltm_lastCycleTime = millis();
         ltm_cycleNum++;      
         if (mcfg.lighttelemetry_baudrate<2400) ltm_slowrate = 1;
+        else ltm_slowrate=0;
         if (ltm_scheduler & 1) {    // is odd
             send_LTM_Aframe();
-            if (ltm_slowrate==0) send_LTM_Sframe();
+           // if (ltm_slowrate==0) send_LTM_Sframe(); // drop one S frame on 10 to fit 2400 bauds without bottleneck
         }
         else                        // is even
         {
-            if (ltm_slowrate == 0) {
-                send_LTM_Aframe();                       
-                send_LTM_Gframe();
-            }
-            else
-            {
+                if (ltm_slowrate == 0 ) {
+                send_LTM_Aframe();
+                }
                 if (ltm_scheduler % 4 == 0) send_LTM_Sframe();
                 else send_LTM_Gframe();
-            }
         }
         ltm_scheduler++;
     }

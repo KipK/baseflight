@@ -3,7 +3,7 @@
  *
  * Minimal one way telemetry protocol for really low bitrates (1200/2400 bauds). 
  * Effective for ground OSD, groundstation HUD and Antenna tracker (ie https://code.google.com/p/ghettostation/ )
- *			   
+ *             
  * Protocol details: 3 different frames, little endian.
  *   G Frame (GPS position) (2hz @ 1200 bauds , 2hz >= 2400 bauds): 18BYTES
  *    0x24 0x54 0x47 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF  0xFF   0xC0   
@@ -90,7 +90,7 @@ static void send_LTM_Sframe()
     
     if (failsafeCnt>2) lt_failsafe = 1;
     else lt_failsafe = 0;
-    //pack A frame 	  
+    //pack A frame    
     //A Frame: $T(2 bytes)A(1byte)PITCH(2 bytes)ROLL(2bytes)HEADING(2bytes)CRC(xor,1byte)
     //START
     LTBuff[0]=0x24; //$
@@ -183,6 +183,8 @@ void sendLightTelemetry(void)
                 else send_LTM_Gframe();
         }
         ltm_scheduler++;
+        if (ltm_scheduler > 10)
+        ltm_scheduler = 1;
     }
 }
 

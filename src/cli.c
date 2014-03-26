@@ -50,8 +50,8 @@ static const char * const mixerNames[] = {
 // sync this with AvailableFeatures enum from board.h
 static const char * const featureNames[] = {
     "PPM", "VBAT", "INFLIGHT_ACC_CAL", "SERIALRX", "MOTOR_STOP",
-    "SERVO_TILT", "GYRO_SMOOTHING", "LED_RING", "GPS",
-    "FAILSAFE", "SONAR", "TELEMETRY", "POWERMETER", "VARIO", "3D", "SOFTSERIAL", "LIGHTTELEMETRY",
+    "SERVO_TILT", "SOFTSERIAL", "LED_RING", "GPS",
+    "FAILSAFE", "SONAR", "TELEMETRY", "POWERMETER", "VARIO", "3D", "LIGHTTELEMETRY",
     NULL
 };
 
@@ -146,6 +146,7 @@ const clivalue_t valueTable[] = {
     { "align_board_yaw", VAR_INT16, &mcfg.board_align_yaw, -180, 360 },
     { "yaw_control_direction", VAR_INT8, &mcfg.yaw_control_direction, -1, 1 },
     { "acc_hardware", VAR_UINT8, &mcfg.acc_hardware, 0, 5 },
+    { "max_angle_inclination", VAR_UINT16, &mcfg.max_angle_inclination, 100, 900 },
     { "moron_threshold", VAR_UINT8, &mcfg.moron_threshold, 0, 128 },
     { "gyro_lpf", VAR_UINT16, &mcfg.gyro_lpf, 0, 256 },
     { "gyro_cmpf_factor", VAR_UINT16, &mcfg.gyro_cmpf_factor, 100, 1000 },

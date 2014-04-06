@@ -154,7 +154,10 @@ void annexCode(void)
         rcCommand[ROLL] = rcCommand[ROLL] * cosDiff - rcCommand[PITCH] * sinDiff;
         rcCommand[PITCH] = rcCommand_PITCH;
     }
-
+    if (feature(FEATURE_ANALOGRSSI) && (mcfg.rssi_aux_channel==0)) {
+        //get RSSI from power_adc_channel
+        rssi = adcGetChannel(mcfg.power_adc_channel); // no average for now.
+    }
     if (feature(FEATURE_VBAT)) {
         if (!(++vbatTimer % VBATFREQ)) {
             vbatRawArray[(ind++) % 8] = adcGetChannel(ADC_BATTERY);

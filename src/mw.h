@@ -287,7 +287,8 @@ typedef struct master_t {
     uint8_t telemetry_port;                 // See TelemetryPort enum.
     uint8_t telemetry_switch;               // Use aux channel to change serial output & baudrate( MSP / Telemetry ). It disables automatic switching to Telemetry when armed.
 	
-    uint32_t lighttelemetry_baudrate;       
+    uint32_t lighttelemetry_baudrate;      //only used for hardware serial
+    uint8_t  lighttelemetry_port;    
 	
 
     config_t profile[3];                    // 3 separate profiles
@@ -303,6 +304,7 @@ typedef struct core_t {
     serialPort_t *mainport;
     serialPort_t *gpsport;
     serialPort_t *telemport;
+    serialPort_t *lighttelemport;
     serialPort_t *rcvrport;
     uint8_t mpu6050_scale;                  // es/non-es variance between MPU6050 sensors, half my boards are mpu6000ES, need this to be dynamic. automatically set by mpu6050 driver.
     uint8_t numRCChannels;                  // number of rc channels as reported by current input driver

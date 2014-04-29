@@ -58,7 +58,7 @@ COMMON_SRC	 = startup_stm32f10x_md_gcc.S \
 		   telemetry_common.c \
 		   telemetry_frsky.c \
 		   telemetry_hott.c \
-		   lighttelemetry.c \
+		   telemetry_ltm.c \
 		   drv_gpio.c \
 		   drv_i2c.c \
 		   drv_i2c_soft.c \

@@ -34,7 +34,7 @@ static void send_LTM_Packet(uint8_t *LTPacket, uint8_t LTPacket_size)
     }
     LTPacket[LTPacket_size-1]=LTCrc;
     for (i = 0; i<LTPacket_size; i++) {
-        serialWrite(core.mainport,LTPacket[i]);
+        serialWrite(core.lighttelemport,LTPacket[i]);
     }
     
 }
@@ -133,7 +133,16 @@ static bool lighttelemetryEnabled = false;
 void initLightTelemetry(void)
 {
 
- //nothing usefull yet. Will be added when softserial will work at other baudrates.
+ //to do: set hardwareserial or softserial output
+    if (!feature(FEATURE_SOFTSERIAL))
+        mcfg.lighttelemetry_port = TELEMETRY_PORT_UART;
+        
+    if (mcfg.lighttelemetry_port == TELEMETRY_PORT_SOFTSERIAL_1)
+        core.lighttelemport = &(softSerialPorts[0].port);
+    else if (mcfg.telemetry_port == TELEMETRY_PORT_SOFTSERIAL_2)
+        core.lighttelemport = &(softSerialPorts[1].port);
+    else
+        core.lighttelemport = core.mainport;
 
 }
 
@@ -143,17 +152,22 @@ static uint8_t ltm_cycleNum = 0;
 void updateLightTelemetryState(void)
 {
     bool State;
-    if (!mcfg.telemetry_switch)
-        State = f.ARMED;
-    else
-        State = rcOptions[BOXTELEMETRY];
     
-    if (State != lighttelemetryEnabled) {
-        if (State)
-            serialInit(mcfg.lighttelemetry_baudrate);
+    if (mcfg.lighttelemetry_port == TELEMETRY_PORT_UART) 
+    {
+        if (!mcfg.telemetry_switch)
+            State = f.ARMED;
         else
-            serialInit(mcfg.serial_baudrate);
-        lighttelemetryEnabled = State;
+            State = rcOptions[BOXTELEMETRY];
+
+        if (State != lighttelemetryEnabled) 
+        {
+            if (State)
+                serialInit(mcfg.lighttelemetry_baudrate);
+            else
+                serialInit(mcfg.serial_baudrate);
+            lighttelemetryEnabled = State;
+        }
     }
 }
 
@@ -172,7 +186,7 @@ void sendLightTelemetry(void)
         else ltm_slowrate=0;
         if (ltm_scheduler & 1) {    // is odd
             send_LTM_Aframe();
-           // if (ltm_slowrate==0) send_LTM_Sframe(); // drop one S frame on 10 to fit 2400 bauds without bottleneck
+           // if (ltm_slowrate==0) send_LTM_Sframe(); 
         }
         else                        // is even
         {

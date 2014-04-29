@@ -304,8 +304,6 @@ void writeServos(void)
     }
 }
 
-extern uint8_t cliMode;
-
 void writeMotors(void)
 {
     uint8_t i;
@@ -489,7 +487,7 @@ void mixTable(void)
         if (maxMotor > mcfg.maxthrottle)     // this is a way to still have good gyro corrections if at least one motor reaches its max.
             motor[i] -= maxMotor - mcfg.maxthrottle;
         if (feature(FEATURE_3D)) {
-            if ((rcData[THROTTLE]) > 1500) {
+            if ((rcData[THROTTLE]) > mcfg.midrc) {
                 motor[i] = constrain(motor[i], mcfg.deadband3d_high, mcfg.maxthrottle);
             } else {
                 motor[i] = constrain(motor[i], mcfg.mincommand, mcfg.deadband3d_low);

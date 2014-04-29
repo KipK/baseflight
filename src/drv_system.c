@@ -5,7 +5,7 @@ static volatile uint32_t usTicks = 0;
 // current uptime for 1kHz systick timer. will rollover after 49 days. hopefully we won't care.
 static volatile uint32_t sysTickUptime = 0;
 // from system_stm32f10x.c
-void SetSysClock(void);
+void SetSysClock(bool overclock);
 #ifdef BUZZER
 void systemBeep(bool onoff);
 static void beepRev4(bool onoff);
@@ -43,20 +43,25 @@ uint32_t millis(void)
     return sysTickUptime;
 }
 
-void systemInit(void)
+void systemInit(bool overclock)
 {
     struct {
         GPIO_TypeDef *gpio;
         gpio_config_t cfg;
     } gpio_setup[] = {
+#ifdef LED0
         {
             .gpio = LED0_GPIO,
             .cfg = { LED0_PIN, Mode_Out_PP, Speed_2MHz }
         },
+#endif
+#ifdef LED1
+
         {
             .gpio = LED1_GPIO,
             .cfg = { LED1_PIN, Mode_Out_PP, Speed_2MHz }
         },
+#endif
 #ifdef BUZZER
         {
             .gpio = BEEP_GPIO,
@@ -70,7 +75,7 @@ void systemInit(void)
 
     // Configure the System clock frequency, HCLK, PCLK2 and PCLK1 prescalers
     // Configure the Flash Latency cycles and enable prefetch buffer
-    SetSysClock();
+    SetSysClock(overclock);
 
     // Turn on clocks for stuff we use
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4 | RCC_APB1Periph_I2C2, ENABLE);
@@ -217,3 +222,4 @@ void systemBeep(bool onoff)
     systemBeepPtr(onoff);
 #endif
 }
+

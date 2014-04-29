@@ -5,7 +5,7 @@ int16_t gyroADC[3], accADC[3], accSmooth[3], magADC[3];
 int32_t accSum[3];
 uint32_t accTimeSum = 0;        // keep track for integration of acc
 int accSumCount = 0;
-int16_t accZ_25deg = 0;
+int16_t smallAngle = 0;
 int32_t baroPressure = 0;
 int32_t baroTemperature = 0;
 uint32_t baroPressureSum = 0;
@@ -19,6 +19,7 @@ int32_t vario = 0;                      // variometer in cm/s
 int16_t throttleAngleCorrection = 0;    // correction of throttle in lateral wind,
 float magneticDeclination = 0.0f;       // calculated at startup from config
 float accVelScale;
+float throttleAngleScale;
 
 // **************
 // gyro+acc IMU
@@ -32,8 +33,9 @@ static void getEstimatedAttitude(void);
 
 void imuInit(void)
 {
-    accZ_25deg = acc_1G * cosf(RAD * 25.0f);
+    smallAngle = lrintf(acc_1G * cosf(RAD * 25.0f));
     accVelScale = 9.80665f / acc_1G / 10000.0f;
+    throttleAngleScale = (1800.0f / M_PI) * (900.0f / cfg.throttle_correction_angle);
 
 #ifdef MAG
     // if mag sensor is enabled, use it
@@ -191,21 +193,17 @@ void acc_calc(uint32_t deltaT)
         accel_ned.V.Z -= accZoffset / 64;  // compensate for gravitation on z-axis
     } else
         accel_ned.V.Z -= acc_1G;
-    
+
     accz_smooth = accz_smooth + (deltaT / (fc_acc + deltaT)) * (accel_ned.V.Z - accz_smooth); // low pass filter
 
     // apply Deadband to reduce integration drift and vibration influence
-    accel_ned.V.Z = applyDeadband(lrintf(accz_smooth), cfg.accz_deadband);
-    accel_ned.V.X = applyDeadband(lrintf(accel_ned.V.X), cfg.accxy_deadband);
-    accel_ned.V.Y = applyDeadband(lrintf(accel_ned.V.Y), cfg.accxy_deadband);
+    accSum[X] += applyDeadband(lrintf(accel_ned.V.X), cfg.accxy_deadband);
+    accSum[Y] += applyDeadband(lrintf(accel_ned.V.Y), cfg.accxy_deadband);
+    accSum[Z] += applyDeadband(lrintf(accz_smooth), cfg.accz_deadband);
 
     // sum up Values for later integration to get velocity and distance
     accTimeSum += deltaT;
     accSumCount++;
-
-    accSum[X] += lrintf(accel_ned.V.X);
-    accSum[Y] += lrintf(accel_ned.V.Y);
-    accSum[Z] += lrintf(accel_ned.V.Z);
 }
 
 void accSum_reset(void)
@@ -238,10 +236,10 @@ static int16_t calculateHeading(t_fp_vector *vec)
 
 static void getEstimatedAttitude(void)
 {
-    uint32_t axis;
+    int32_t axis;
     int32_t accMag = 0;
     static t_fp_vector EstM;
-    static t_fp_vector EstN = { .A = { 1000.0f, 0.0f, 0.0f } };
+    static t_fp_vector EstN = { .A = { 1.0f, 0.0f, 0.0f } };
     static float accLPF[3];
     static uint32_t previousT;
     uint32_t currentT = micros();
@@ -265,10 +263,12 @@ static void getEstimatedAttitude(void)
     accMag = accMag * 100 / ((int32_t)acc_1G * acc_1G);
 
     rotateV(&EstG.V, deltaGyroAngle);
-    if (sensors(SENSOR_MAG))
+    if (sensors(SENSOR_MAG)) {
         rotateV(&EstM.V, deltaGyroAngle);
-    else
+    } else {
         rotateV(&EstN.V, deltaGyroAngle);
+        normalizeV(&EstN.V, &EstN.V);
+    }
 
     // Apply complimentary filter (Gyro drift correction)
     // If accel magnitude >1.15G or <0.85G and ACC vector outside of the limit range => we neutralize the effect of accelerometers in the angle estimation.
@@ -283,10 +283,7 @@ static void getEstimatedAttitude(void)
             EstM.A[axis] = (EstM.A[axis] * (float)mcfg.gyro_cmpfm_factor + magADC[axis]) * INV_GYR_CMPFM_FACTOR;
     }
 
-   if (EstG.A[Z] > accZ_25deg)
-        f.SMALL_ANGLES_25 = 1;
-    else
-        f.SMALL_ANGLES_25 = 0;
+    f.SMALL_ANGLE = (EstG.A[Z] > smallAngle);
 
     // Attitude of the estimated vector
     anglerad[ROLL] = atan2f(EstG.V.Y, EstG.V.Z);
@@ -301,9 +298,19 @@ static void getEstimatedAttitude(void)
 
     acc_calc(deltaT); // rotate acc vector into earth frame
 
-    if (cfg.throttle_angle_correction) {
-        int cosZ = ((int32_t)(EstG.V.Z * 100.0f)) / acc_1G;
-        throttleAngleCorrection = cfg.throttle_angle_correction * constrain(100 - cosZ, 0, 100) / 8;
+    if (cfg.throttle_correction_value) {
+
+        float cosZ = EstG.V.Z / sqrtf(EstG.V.X * EstG.V.X + EstG.V.Y * EstG.V.Y + EstG.V.Z * EstG.V.Z);
+
+        if (cosZ <= 0.015f) { // we are inverted, vertical or with a small angle < 0.86 deg
+            throttleAngleCorrection = 0;
+        } else {
+            int angle = lrintf(acosf(cosZ) * throttleAngleScale);
+            if (angle > 900)
+                angle = 900;
+            throttleAngleCorrection = lrintf(cfg.throttle_correction_value * sinf(angle / (900.0f * M_PI / 2.0f))) ;
+        }
+
     }
 }
 
@@ -338,8 +345,8 @@ int getEstimatedAltitude(void)
     if (calibratingB > 0) {
         baroGroundPressure -= baroGroundPressure / 8;
         baroGroundPressure += baroPressureSum / (cfg.baro_tab_size - 1);
-        baroGroundAltitude = (1.0f - powf((baroGroundPressure / 8) / 101325.0f, 0.190295f)) * 4433000.0f; 
-        
+        baroGroundAltitude = (1.0f - powf((baroGroundPressure / 8) / 101325.0f, 0.190295f)) * 4433000.0f;
+
         vel = 0;
         accAlt = 0;
         calibratingB--;
@@ -358,8 +365,8 @@ int getEstimatedAltitude(void)
     vel_acc = accZ_tmp * accVelScale * (float)accTimeSum;
 
     // Integrator - Altitude in cm
-    accAlt += (vel_acc * 0.5f) * dt  + vel * dt;                                        // integrate velocity to get distance (x= a/2 * t^2)
-    accAlt = accAlt * cfg.baro_cf_alt + (float) BaroAlt *(1.0f - cfg.baro_cf_alt);      // complementary filter for Altitude estimation (baro & acc)
+    accAlt += (vel_acc * 0.5f) * dt + vel * dt;                                         // integrate velocity to get distance (x= a/2 * t^2)
+    accAlt = accAlt * cfg.baro_cf_alt + (float)BaroAlt * (1.0f - cfg.baro_cf_alt);      // complementary filter for Altitude estimation (baro & acc)
     EstAlt = accAlt;
     vel += vel_acc;
 
@@ -380,11 +387,10 @@ int getEstimatedAltitude(void)
     // apply Complimentary Filter to keep the calculated velocity based on baro velocity (i.e. near real velocity).
     // By using CF it's possible to correct the drift of integrated accZ (velocity) without loosing the phase, i.e without delay
     vel = vel * cfg.baro_cf_vel + baroVel * (1 - cfg.baro_cf_vel);
+    vel_tmp = lrintf(vel);
 
     // set vario
-    vel_tmp = lrintf(vel);
-    vel_tmp = applyDeadband(vel_tmp, 5);
-    vario = vel_tmp;
+    vario = applyDeadband(vel_tmp, 5);
 
     // Altitude P-Controller
     error = constrain(AltHold - EstAlt, -500, 500);
@@ -393,7 +399,7 @@ int getEstimatedAltitude(void)
 
     // Velocity PID-Controller
     // P
-    error = setVel - lrintf(vel);
+    error = setVel - vel_tmp;
     BaroPID = constrain((cfg.P8[PIDVEL] * error / 32), -300, +300);
 
     // I
@@ -402,8 +408,8 @@ int getEstimatedAltitude(void)
     BaroPID += errorAltitudeI / 1024;     // I in range +/-200
 
     // D
-    accZ_old = accZ_tmp;
     BaroPID -= constrain(cfg.D8[PIDVEL] * (accZ_tmp + accZ_old) / 64, -150, 150);
+    accZ_old = accZ_tmp;
 
     return 1;
 }

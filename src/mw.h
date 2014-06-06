@@ -256,6 +256,9 @@ typedef struct master_t {
     int16_t magZero[3];
 
     // Battery/ADC stuff
+    uint16_t currentscale;                  // scale the current sensor output voltage to milliamps. Value in 1/10th mV/A
+    uint16_t currentoffset;                 // offset of the current sensor in millivolt steps
+    uint8_t multiwiicurrentoutput;          // if set to 1 output the amperage in milliamp steps instead of 0.01A steps via msp
     uint8_t vbatscale;                      // adjust this to match battery voltage to reported value
     uint8_t vbatmaxcellvoltage;             // maximum voltage per cell, used for auto-detecting battery voltage in 0.1V units, default is 43 (4.3V)
     uint8_t vbatmincellvoltage;             // minimum voltage per cell, this triggers battery out alarms, in 0.1V units, default is 33 (3.3V)
@@ -369,8 +372,10 @@ extern int16_t motor[MAX_MOTORS];
 extern int16_t servo[MAX_SERVOS];
 extern int16_t rcData[RC_CHANS];
 extern uint16_t rssi;                  // range: [0;1023]
-extern uint8_t vbat;
+extern uint16_t vbat;                  // battery voltage in 0.1V steps
 extern int16_t telemTemperature1;      // gyro sensor temperature
+extern int32_t amperage;               // amperage read by current sensor in 0.01A steps
+extern int32_t mAhdrawn;              // milli ampere hours drawn from battery since start
 extern uint8_t toggleBeep;
 
 #define PITCH_LOOKUP_LENGTH 7
@@ -418,9 +423,10 @@ void blinkLED(uint8_t num, uint8_t wait, uint8_t repeat);
 int getEstimatedAltitude(void);
 
 // Sensors
-void sensorsAutodetect(void);
+bool sensorsAutodetect(void);
 void batteryInit(void);
 uint16_t batteryAdcToVoltage(uint16_t src);
+int32_t currentSensorToCentiamps(uint16_t src);
 void ACC_getADC(void);
 int Baro_update(void);
 void Gyro_getADC(void);
@@ -470,6 +476,11 @@ bool sbusFrameComplete(void);
 // sumd
 void sumdInit(rcReadRawDataPtr *callback);
 bool sumdFrameComplete(void);
+
+// rxmsp
+void mspInit(rcReadRawDataPtr *callback);
+bool mspFrameComplete(void);
+void mspFrameRecieve(void);
 
 // buzzer
 void buzzer(uint8_t warn_vbat);

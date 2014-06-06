@@ -32,10 +32,12 @@ int main(void)
     uint8_t i;
     drv_pwm_config_t pwm_params;
     drv_adc_config_t adc_params;
+    bool sensorsOK = false;
 #ifdef SOFTSERIAL_LOOPBACK
     serialPort_t* loopbackPort1 = NULL;
     serialPort_t* loopbackPort2 = NULL;
 #endif
+
     checkFirstTime(false);
     readEEPROM();
     systemInit(mcfg.emf_avoidance);
@@ -54,12 +56,43 @@ int main(void)
     }
 
     adcInit(&adc_params);
+    // Check battery type/voltage
+    if (feature(FEATURE_VBAT))
+        batteryInit();
     initBoardAlignment();
 
     // We have these sensors; SENSORS_SET defined in board.h depending on hardware platform
     sensorsSet(SENSORS_SET);
+    // drop out any sensors that don't seem to work, init all the others. halt if gyro is dead.
+    sensorsOK = sensorsAutodetect();
 
+    // production debug output
+#ifdef PROD_DEBUG
+    productionDebug();
+#endif
+
+    // if gyro was not detected due to whatever reason, we give up now.
+    if (!sensorsOK)
+        failureMode(3);
+
+    LED1_ON;
+    LED0_OFF;
+    for (i = 0; i < 10; i++) {
+        LED1_TOGGLE;
+        LED0_TOGGLE;
+        delay(25);
+        BEEP_ON;
+        delay(25);
+        BEEP_OFF;
+    }
+    LED0_OFF;
+    LED1_OFF;
+
+    imuInit(); // Mag is initialized inside imuInit
     mixerInit(); // this will set core.useServo var depending on mixer type
+
+    serialInit(mcfg.serial_baudrate);
+
     // when using airplane/wing mixer, servo/motor outputs are remapped
     if (mcfg.mixerConfiguration == MULTITYPE_AIRPLANE || mcfg.mixerConfiguration == MULTITYPE_FLYING_WING)
         pwm_params.airplane = true;
@@ -112,6 +145,9 @@ int main(void)
             case SERIALRX_SUMD:
                 sumdInit(&rcReadRawFunc);
                 break;
+            case SERIALRX_MSP:
+                mspInit(&rcReadRawFunc);
+                break;
         }
     } else { // spektrum and GPS are mutually exclusive
         // Optional GPS - available in both PPM and PWM input mode, in PWM input, reduces number of available channels by 2.
@@ -125,29 +161,6 @@ int main(void)
             Sonar_init();
     }
 #endif
-
-    LED1_ON;
-    LED0_OFF;
-    for (i = 0; i < 10; i++) {
-        LED1_TOGGLE;
-        LED0_TOGGLE;
-        delay(25);
-        BEEP_ON;
-        delay(25);
-        BEEP_OFF;
-    }
-    LED0_OFF;
-    LED1_OFF;
-
-    // drop out any sensors that don't seem to work, init all the others. halt if gyro is dead.
-    sensorsAutodetect();
-    imuInit(); // Mag is initialized inside imuInit
-
-    // Check battery type/voltage
-    if (feature(FEATURE_VBAT))
-        batteryInit();
-
-    serialInit(mcfg.serial_baudrate);
 
     if (feature(FEATURE_SOFTSERIAL)) {
         //mcfg.softserial_baudrate = 19200; // Uncomment to override config value

@@ -13,7 +13,7 @@ master_t mcfg;  // master config struct with data independent from profiles
 config_t cfg;   // profile config struct
 const char rcChannelLetters[] = "AERT1234";
 
-static const uint8_t EEPROM_CONF_VERSION = 63;
+static const uint8_t EEPROM_CONF_VERSION = 64;
 static uint32_t enabledSensors = 0;
 static void resetConf(void);
 
@@ -65,14 +65,14 @@ void readEEPROM(void)
     // Copy current profile
     if (mcfg.current_profile > 2) // sanity check
         mcfg.current_profile = 0;
-    memcpy(&cfg, &mcfg.profile[mcfg.current_profile], sizeof(config_t)); 
+    memcpy(&cfg, &mcfg.profile[mcfg.current_profile], sizeof(config_t));
 }
 
 void activateConfig(void)
 {
     uint8_t i;
     for (i = 0; i < PITCH_LOOKUP_LENGTH; i++)
-        lookupPitchRollRC[i] = (2500 + cfg.rcExpo8 * (i * i - 25)) * i * (int32_t) cfg.rcRate8 / 2500;
+        lookupPitchRollRC[i] = (2500 + cfg.rcExpo8 * (i * i - 25)) * i * (int32_t)cfg.rcRate8 / 2500;
 
     for (i = 0; i < THROTTLE_LOOKUP_LENGTH; i++) {
         int16_t tmp = 10 * i - cfg.thrMid8;
@@ -81,8 +81,8 @@ void activateConfig(void)
             y = 100 - cfg.thrMid8;
         if (tmp < 0)
             y = cfg.thrMid8;
-        lookupThrottleRC[i] = 10 * cfg.thrMid8 + tmp * (100 - cfg.thrExpo8 + (int32_t) cfg.thrExpo8 * (tmp * tmp) / (y * y)) / 10;
-        lookupThrottleRC[i] = mcfg.minthrottle + (int32_t) (mcfg.maxthrottle - mcfg.minthrottle) * lookupThrottleRC[i] / 1000; // [MINTHROTTLE;MAXTHROTTLE]
+        lookupThrottleRC[i] = 10 * cfg.thrMid8 + tmp * (100 - cfg.thrExpo8 + (int32_t)cfg.thrExpo8 * (tmp * tmp) / (y * y)) / 10;
+        lookupThrottleRC[i] = mcfg.minthrottle + (int32_t)(mcfg.maxthrottle - mcfg.minthrottle) * lookupThrottleRC[i] / 1000; // [MINTHROTTLE;MAXTHROTTLE]
     }
 
     setPIDController(cfg.pidController);
@@ -98,10 +98,9 @@ void loadAndActivateConfig(void)
 void writeEEPROM(uint8_t b, uint8_t updateProfile)
 {
     FLASH_Status status;
-    uint32_t i;
+    int i, tries = 3;
     uint8_t chk = 0;
     const uint8_t *p;
-    int tries = 0;
 
     // prepare checksum/version constants
     mcfg.version = EEPROM_CONF_VERSION;
@@ -122,27 +121,20 @@ void writeEEPROM(uint8_t b, uint8_t updateProfile)
     mcfg.chk = chk;
 
     // write it
-retry:
     FLASH_Unlock();
-    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+    while (tries--) {
+        FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 
-    if (FLASH_ErasePage(FLASH_WRITE_ADDR) == FLASH_COMPLETE) {
-        for (i = 0; i < sizeof(master_t); i += 4) {
-            status = FLASH_ProgramWord(FLASH_WRITE_ADDR + i, *(uint32_t *) ((char *)&mcfg + i));
-            if (status != FLASH_COMPLETE) {
-                FLASH_Lock();
-                tries++;
-                if (tries < 3)
-                    goto retry;
-                else
-                    break;
-            }
-        }
+        status = FLASH_ErasePage(FLASH_WRITE_ADDR);
+        for (i = 0; i < sizeof(master_t) && status == FLASH_COMPLETE; i += 4)
+            status = FLASH_ProgramWord(FLASH_WRITE_ADDR + i, *(uint32_t *)((char *)&mcfg + i));
+        if (status == FLASH_COMPLETE)
+            break;
     }
     FLASH_Lock();
 
     // Flash write failed - just die now
-    if (tries == 3 || !validEEPROM()) {
+    if (status != FLASH_COMPLETE || !validEEPROM()) {
         failureMode(10);
     }
 
@@ -195,6 +187,7 @@ static void resetConf(void)
     mcfg.max_angle_inclination = 500;    // 50 degrees
     mcfg.yaw_control_direction = 1;
     mcfg.moron_threshold = 32;
+    mcfg.currentscale = 400; // for Allegro ACS758LCB-100U (40mV/A)
     mcfg.vbatscale = 110;
     mcfg.vbatmaxcellvoltage = 43;
     mcfg.vbatmincellvoltage = 33;

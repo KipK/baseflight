@@ -4,8 +4,6 @@
 #include "cli.h"
 #include "telemetry_common.h"
 
-// June 2013     V2.2-dev
-
 flags_t f;
 int16_t debug[4];
 uint8_t toggleBeep = 0;
@@ -14,7 +12,9 @@ uint32_t previousTime = 0;
 uint16_t cycleTime = 0;         // this is the number in micro second to achieve a full loop, it can differ a little and is taken into account in the PID loop
 int16_t headFreeModeHold;
 
-uint8_t vbat;                   // battery voltage in 0.1V steps
+uint16_t vbat;                  // battery voltage in 0.1V steps
+int32_t amperage;               // amperage read by current sensor in centiampere (1/100th A)
+int32_t mAhdrawn;              // milliampere hours drawn from the battery since start
 int16_t telemTemperature1;      // gyro sensor temperature
 
 int16_t failsafeCnt = 0;
@@ -92,9 +92,10 @@ void annexCode(void)
 
     // vbat shit
     static uint8_t vbatTimer = 0;
-    static uint8_t ind = 0;
-    uint16_t vbatRaw = 0;
-    static uint16_t vbatRawArray[8];
+    static int32_t vbatRaw = 0;
+    static int32_t amperageRaw = 0;
+    static int64_t mAhdrawnRaw = 0;
+    static int32_t vbatCycleTime = 0;
 
     int i;
 
@@ -157,11 +158,21 @@ void annexCode(void)
     }
 
     if (feature(FEATURE_VBAT)) {
+        vbatCycleTime += cycleTime;
         if (!(++vbatTimer % VBATFREQ)) {
-            vbatRawArray[(ind++) % 8] = adcGetChannel(ADC_BATTERY);
-            for (i = 0; i < 8; i++)
-                vbatRaw += vbatRawArray[i];
+            vbatRaw -= vbatRaw / 8;
+            vbatRaw += adcGetChannel(ADC_BATTERY);
             vbat = batteryAdcToVoltage(vbatRaw / 8);
+            
+            if (mcfg.power_adc_channel > 0) {
+                amperageRaw -= amperageRaw / 8;
+                amperageRaw += adcGetChannel(ADC_EXTERNAL_CURRENT);
+                amperage = currentSensorToCentiamps(amperageRaw / 8);
+                mAhdrawnRaw += (amperage * vbatCycleTime) / 1000;
+                mAhdrawn = mAhdrawnRaw / (3600 * 100);
+                vbatCycleTime = 0;
+            }
+            
         }
         if ((vbat > batteryWarningVoltage) || (vbat < mcfg.vbatmincellvoltage)) { // VBAT ok, buzzer off
             buzzerFreq = 0;
@@ -229,40 +240,35 @@ void annexCode(void)
 
 uint16_t pwmReadRawRC(uint8_t chan)
 {
-    uint16_t data;
-
-    data = pwmRead(mcfg.rcmap[chan]);
-    if (data < 750 || data > 2250)
-        data = mcfg.midrc;
-
-    return data;
+    return pwmRead(mcfg.rcmap[chan]);
 }
 
 void computeRC(void)
 {
-    uint8_t chan;
+    uint16_t capture;
+    int i, chan;
 
     if (feature(FEATURE_SERIALRX)) {
         for (chan = 0; chan < 8; chan++)
             rcData[chan] = rcReadRawFunc(chan);
     } else {
-        static int16_t rcData4Values[8][4], rcDataMean[8];
-        static uint8_t rc4ValuesIndex = 0;
-        uint8_t a;
+        static int16_t rcDataAverage[8][4];
+        static int rcAverageIndex = 0;
 
-        rc4ValuesIndex++;
         for (chan = 0; chan < 8; chan++) {
-            rcData4Values[chan][rc4ValuesIndex % 4] = rcReadRawFunc(chan);
-            rcDataMean[chan] = 0;
-            for (a = 0; a < 4; a++)
-                rcDataMean[chan] += rcData4Values[chan][a];
+            capture = rcReadRawFunc(chan);
 
-            rcDataMean[chan] = (rcDataMean[chan] + 2) / 4;
-            if (rcDataMean[chan] < rcData[chan] - 3)
-                rcData[chan] = rcDataMean[chan] + 2;
-            if (rcDataMean[chan] > rcData[chan] + 3)
-                rcData[chan] = rcDataMean[chan] - 2;
+            // validate input
+            if (capture < PULSE_MIN || capture > PULSE_MAX)
+                capture = mcfg.midrc;
+            rcDataAverage[chan][rcAverageIndex % 4] = capture;
+            // clear this since we're not accessing it elsewhere. saves a temp var
+            rcData[chan] = 0;
+            for (i = 0; i < 4; i++)
+                rcData[chan] += rcDataAverage[chan][i];
+            rcData[chan] /= 4;
         }
+        rcAverageIndex++;
     }
 }
 
@@ -366,15 +372,13 @@ static void pidRewrite(void)
     // ----------PID controller----------
     for (axis = 0; axis < 3; axis++) {
         // -----Get the desired angle rate depending on flight mode
-        if ((f.ANGLE_MODE || f.HORIZON_MODE) && axis < 2) { // MODE relying on ACC
-            // calculate error and limit the angle to max configured inclination
-            errorAngle = constrain((rcCommand[axis] << 1) + GPS_angle[axis], -((int)mcfg.max_angle_inclination), +mcfg.max_angle_inclination) - angle[axis] + cfg.angleTrim[axis]; // 16 bits is ok here
-        }
         if (axis == 2) { // YAW is always gyro-controlled (MAG correction is applied to rcCommand)
             AngleRateTmp = (((int32_t)(cfg.yawRate + 27) * rcCommand[2]) >> 5);
-         } else {
+        } else {
+            // calculate error and limit the angle to 50 degrees max inclination
+            errorAngle = (constrain(rcCommand[axis] + GPS_angle[axis], -500, +500) - angle[axis] + cfg.angleTrim[axis]) / 10.0f; // 16 bits is ok here
             if (!f.ANGLE_MODE) { //control is GYRO based (ACRO and HORIZON - direct sticks control is applied to rate PID
-                AngleRateTmp = ((int32_t) (cfg.rollPitchRate + 27) * rcCommand[axis]) >> 4;
+                AngleRateTmp = ((int32_t)(cfg.rollPitchRate + 27) * rcCommand[axis]) >> 4;
                 if (f.HORIZON_MODE) {
                     // mix up angle error to desired AngleRateTmp to add a little auto-level feel
                     AngleRateTmp += (errorAngle * cfg.I8[PIDLEVEL]) >> 8;
@@ -463,6 +467,9 @@ void loop(void)
                 break;
             case SERIALRX_SUMD:
                 rcReady = sumdFrameComplete();
+                break;
+            case SERIALRX_MSP:
+                rcReady = mspFrameComplete();
                 break;
         }
     }
@@ -631,7 +638,7 @@ void loop(void)
             if (rcOptions[BOXCALIB]) {      // Use the Calib Option to activate : Calib = TRUE Meausrement started, Land and Calib = 0 measurement stored
                 if (!AccInflightCalibrationActive && !AccInflightCalibrationMeasurementDone)
                     InflightcalibratingA = 50;
-                    AccInflightCalibrationActive = true;
+                AccInflightCalibrationActive = true;
             } else if (AccInflightCalibrationMeasurementDone && !f.ARMED) {
                 AccInflightCalibrationMeasurementDone = false;
                 AccInflightCalibrationSavetoEEProm = true;
@@ -820,12 +827,12 @@ void loop(void)
         loopTime = currentTime + mcfg.looptime;
 
         computeIMU();
-        annexCode();
         // Measure loop rate just afer reading the sensors
         currentTime = micros();
         cycleTime = (int32_t)(currentTime - previousTime);
         previousTime = currentTime;
-
+        // non IMU critical, temeperatur, serialcom
+         annexCode();
 #ifdef MAG
         if (sensors(SENSOR_MAG)) {
             if (abs(rcCommand[YAW]) < 70 && f.MAG_MODE) {
@@ -860,7 +867,7 @@ void loop(void)
                                 AltHold = EstAlt;
                                 isAltHoldChanged = 0;
                             }
-                            rcCommand[THROTTLE] = initialThrottleHold + BaroPID;
+                            rcCommand[THROTTLE] = constrain(initialThrottleHold + BaroPID, mcfg.minthrottle + 100, mcfg.maxthrottle);
                         }
                     } else {
                         // slow alt changes for apfags
@@ -875,8 +882,7 @@ void loop(void)
                             AltHoldCorr = 0;
                             isAltHoldChanged = 0;
                         }
-                        rcCommand[THROTTLE] = initialThrottleHold + BaroPID;
-                        rcCommand[THROTTLE] = constrain(rcCommand[THROTTLE], mcfg.minthrottle + 150, mcfg.maxthrottle);
+                        rcCommand[THROTTLE] = constrain(initialThrottleHold + BaroPID, mcfg.minthrottle + 100, mcfg.maxthrottle);
                     }
                 } else {
                     // handle fixedwing-related althold. UNTESTED! and probably wrong

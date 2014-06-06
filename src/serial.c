@@ -158,14 +158,14 @@ uint8_t read8(void)
 uint16_t read16(void)
 {
     uint16_t t = read8();
-    t += (uint16_t) read8() << 8;
+    t += (uint16_t)read8() << 8;
     return t;
 }
 
 uint32_t read32(void)
 {
     uint32_t t = read16();
-    t += (uint32_t) read16() << 16;
+    t += (uint32_t)read16() << 16;
     return t;
 }
 
@@ -286,6 +286,7 @@ static void evaluateCommand(void)
         for (i = 0; i < 8; i++)
             rcData[i] = read16();
         headSerialReply(0);
+        mspFrameRecieve();
         break;
     case MSP_SET_ACC_TRIM:
         cfg.angleTrim[PITCH] = read16();
@@ -470,10 +471,13 @@ static void evaluateCommand(void)
         break;
     case MSP_ANALOG:
         headSerialReply(7);
-        serialize8(vbat);
-        serialize16(0); // power meter trash
+        serialize8((uint8_t)constrain(vbat, 0, 255));
+        serialize16((uint16_t)constrain(mAhdrawn, 0, 0xFFFF)); // milliamphours drawn from battery
         serialize16(rssi);
-        serialize16(0); // amperage
+        if (mcfg.multiwiicurrentoutput)
+            serialize16((uint16_t)constrain((abs(amperage) * 10), 0, 0xFFFF)); // send amperage in 0.001 A steps
+        else
+            serialize16((uint16_t)constrain(abs(amperage), 0, 0xFFFF)); // send amperage in 0.01 A steps
         break;
     case MSP_RC_TUNING:
         headSerialReply(7);
